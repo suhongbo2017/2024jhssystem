@@ -1,0 +1,1 @@
+pyinstaller -F --onefile --add-data "templates;templates" --add-data "static;static" --add-data "server_connect.py;." --add-data "write_mysql.py;." main.py
