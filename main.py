@@ -285,8 +285,19 @@ def LSMqueryMaterial():
 @app.route('/Scheduled_Tasks')
 def Scheduled_Tasks():
 
-    sql_query= "select * from production_schedule"
+    sql_queryDate= "select 生产日期 from production_schedule ORDER BY DATE(生产日期) DESC "
+    df_date= pd.read_sql(sql_queryDate,write_mysql.engine())
+    df_datelist= df_date.生产日期.dt.date.unique()
+    
+    params= df_datelist[0]
+    # params= '2023-12-20'
+    print(params)
+    sql_query= f"select * from production_schedule where date(生产日期) = '{params}'"
+    
     df= pd.read_sql(sql_query,write_mysql.engine())
+    if df.empty:
+        message= '数据为空'
+        return render_template('Scheduled_Tasks.html')
     column_names= ['id','生产日期','班次', '重点关注', '任务单号', '客户', '型号', '产品名称', '宽度', '长度', '涂布辊', '产能',
        '计划时间', '卷数', '计划米数', '订单交期', '订单数', '物料信息', '实际米数', '报废米数', '异常报废',
        '报废率', '实际生产时间', '平方数', '实际平方', '原膜批号', '生产批号', '机速', '剥离剂', 'F02',
@@ -303,6 +314,7 @@ def Scheduled_Tasks():
     df.fillna('',inplace=True)
     # datas= df.to_dict(orient='records')
     df= df.iterrows()
+    print(df)
     
 
     # print('打印DF',df)
@@ -333,45 +345,54 @@ def uploadFile():
         else:
             flash('Invalid file type. Allowed file types are: txt, pdf, png, jpg, jpeg, gif')
 
-
+#查询送货数量
 @app.route('/query_seorder')
 def query_seorder():
+    #从页面获取开始日期与结束日期：startDate & endDate
     startDate= request.args.get('startDate')
     endDate= request.args.get('endDate')
+    #如果返回结果为空，则返回查询页面
     if startDate is None or endDate is None:
         return render_template('query_seorder.html')
     print('查询页面中的开始日期和结束日期',startDate,endDate)
     
-
+    #查询数据库中数据，以startData,endData为参数
     df= server_connect.seorder(startDate,endDate)
+    #如果返回空值都输出一条message,并返回查询页面
     if df.empty:
         message= '未查询到数据，请检查你的输入。'
         return render_template('query_seorder.html',message= message)
-
+    #设置columns为下面的列名
     df.columns= ['通知单内码','数据编号','数量','单价','金额','日期','订单号','品名','批号','规格']
-    print(df.日期)
+    # print(df.日期)
+    #设置日期格式为dt.date,单价为浮点数取3位小数，金额为浮点数取2位小数，数量为浮点数取2位小数
     df.日期= df.日期.dt.date
     df.单价= df.单价.apply(float).round(3)
     df.金额= df.金额.apply(float).round(2)
     df.数量= df.数量.apply(float).round(2)
-
-    df= df.loc[:,['日期','订单号', '品名','单价','数量','金额','规格','批号']]
-    print(df.head())
-    from pyecharts.charts import Bar,Line
-    from pyecharts import options as opts
-
-    newdata= df.groupby('日期').agg({'金额':'sum','数量':'sum'})
-    print(newdata)
-    x_data= newdata.index.tolist()
-    y_data= newdata['金额'].tolist()
-    y2_data= newdata['数量'].tolist()
-    line= Bar(init_opts= opts.InitOpts(width='1500px',height='600px'))
     
-    line.add_xaxis(x_data)
-    line.add_yaxis('金额',y_data)
-    line.add_yaxis('数量',y2_data)
-    line.render('./static/report/line.html')
-    return render_template('query_seorder.html',datas= df.iterrows(),names= df.columns)
+
+    #使用df.loc对数据进行排序
+    df= df.loc[:,['日期','订单号', '品名','单价','数量','金额','规格','批号']]
+    # print(df.head())
+    sum_df= df.金额.sum()/10000,'w'
+    #使用pyecharts对数据进行绘图，并保存为html文件
+    # from pyecharts.charts import Bar,Line
+    # from pyecharts import options as opts
+
+    # newdata= df.groupby('日期').agg({'金额':'sum','数量':'sum'})
+    
+    # print(newdata)
+    # x_data= newdata.index.tolist()
+    # y_data= newdata['金额'].tolist()
+    # y2_data= newdata['数量'].tolist()
+    # line= Bar(init_opts= opts.InitOpts(width='1500px',height='600px'))
+    
+    # line.add_xaxis(x_data)
+    # line.add_yaxis('金额',y_data)
+    # line.add_yaxis('数量',y2_data)
+    # line.render('./static/report/line.html')
+    return render_template('query_seorder.html',datas= df.iterrows(),names= df.columns,sum_df= sum_df)
 
 @app.route('/5s')
 def fiveS():

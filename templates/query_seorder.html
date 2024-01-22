@@ -16,9 +16,7 @@
             <input type="date" name="endDate" id="endDate" required>
         </div>
         <input type="submit" value="查询" width="100px" height="130px">
-        <button style="width: 100px;height: 30px;background-color: tomato;position: relative;left: 500px;">
-            <a href="./static/report/line.html" target="_blank" >查看图表</a>
-        </button>
+        
     </form>
     <table id="myTable" class="table table-bordered">
         <thead>
@@ -38,8 +36,11 @@
             {% endfor %}
         </tbody>
     </table>
+    <p>合计：{{ sum_df }}万元</p>
+    
     {% if message %}
     {{ message }}
+   
     {% endif %}
 
     </div>
